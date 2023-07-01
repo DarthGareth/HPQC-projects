@@ -21,7 +21,7 @@ def calculate_enegyH(scanDistance: float) -> float:
         optimizationCycles      =   optimizationCycles + 1
     if not stability:
         sys.exit(-1)   
-    neutralMoleculeCC           =   cc.UCCSD(neutralMoleculeHF).set(conv_tol = 1e-7, frozen = 5, max_cycle = 200)
+    neutralMoleculeCC           =   cc.UCCSD(neutralMoleculeHF).set(conv_tol = 1e-7, frozen = 0, max_cycle = 200)
     neutralMoleculeCC.run()
     checkpoint1                 =   neutralMoleculeCC.converged
     neutralMoleculeCC_CCSDT     =   neutralMoleculeCC.ccsd_t()
