@@ -1,0 +1,37 @@
+import pyscf    as pyscf
+import numpy    as np
+import sys      as sys
+from pyscf      import gto, scf, ao2mo, fci, ci, cc
+from pyscf.lib  import logger
+
+def calculate_enegySi(scanDistance: float) -> float:
+    scanDistance =  scanDistance/1000
+    moleculeZMAT = f'''
+    Si1
+    '''
+    neutralMolecule     = pyscf.M(atom = moleculeZMAT, basis = '3-21G', verbose = 9, charge = 0, spin = 1)
+    neutralMoleculeHF   = scf.newton(scf.UHF(neutralMolecule)).run()
+    logObject               =   logger.new_logger(neutralMoleculeHF) 
+    orbitals,_,stability,_  =   neutralMoleculeHF.stability(return_status = True)
+    optimizationCycles      =   0
+    while (not stability and optimizationCycles < 200): 
+        densityMatrix           =   neutralMoleculeHF.make_rdm1(orbitals, neutralMoleculeHF.mo_occ)
+        neutralMoleculeHF       =   neutralMoleculeHF.run(densityMatrix) 
+        orbitals,_,stability,_  =   neutralMoleculeHF.stability(return_status = True)
+        optimizationCycles      =   optimizationCycles + 1
+    if not stability:
+        sys.exit(-1)   
+    neutralMoleculeCC           =   cc.UCCSD(neutralMoleculeHF).set(conv_tol = 1e-7, frozen = 5, max_cycle = 200)
+    neutralMoleculeCC.run()
+    checkpoint1                 =   neutralMoleculeCC.converged
+    neutralMoleculeCC_CCSDT     =   neutralMoleculeCC.ccsd_t()
+    if checkpoint1:
+        return neutralMoleculeHF.e_tot, neutralMoleculeCC.e_tot, neutralMoleculeCC.e_tot + neutralMoleculeCC_CCSDT
+    else:
+        return None
+for distance in range(500, 10001):
+    energy  =   calculate_enegySi(scanDistance=distance)
+    if energy:
+      with open("Sienergies.dat","a") as logObject:
+          logObject.write("{:10.3f}{:20.5f}{:20.5f}{:20.5f}\n".format(distance/1000, energy[0], energy[1],energy[2]))
+    
