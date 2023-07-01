@@ -1,0 +1,38 @@
+import pyscf    as pyscf
+import numpy    as np
+import sys      as sys
+from pyscf      import gto, scf, ao2mo, fci, ci, cc
+from pyscf.lib  import logger
+
+def calculate_enegycat(scanDistance: float) -> float:
+    scanDistance =  scanDistance/1000
+    moleculeZMAT = f'''
+    Si1
+    H1  1 {scanDistance}
+    '''
+    catMolecule     = pyscf.M(atom = moleculeZMAT, basis = '3-21G', verbose = 9, charge = 1, spin = 0)
+    catMoleculeHF   = scf.newton(scf.UHF(catMolecule)).run()
+    logObject               =   logger.new_logger(catMoleculeHF) 
+    orbitals,_,stability,_  =   catMoleculeHF.stability(return_status = True)
+    optimizationCycles      =   0
+    while (not stability and optimizationCycles < 200): 
+        densityMatrix           =   catMoleculeHF.make_rdm1(orbitals, catMoleculeHF.mo_occ)
+        catMoleculeHF       =  catMoleculeHF.run(densityMatrix) 
+        orbitals,_,stability,_  =   catMoleculeHF.stability(return_status = True)
+        optimizationCycles      =   optimizationCycles + 1
+    if not stability:
+        sys.exit(-1)   
+    catMoleculeCC           =   cc.UCCSD(catMoleculeHF).set(conv_tol = 1e-7, frozen = 5, max_cycle = 200)
+    catMoleculeCC.run()
+    checkpoint1                 =   catMoleculeCC.converged
+    catMoleculeCC_CCSDT     =   catMoleculeCC.ccsd_t()
+    if checkpoint1:
+        return catMoleculeHF.e_tot, catMoleculeCC.e_tot, catMoleculeCC.e_tot + catMoleculeCC_CCSDT
+    else:
+        return None
+for distance in range(500, 10001):
+    energy  =   calculate_enegycat(scanDistance=distance)
+    if energy:
+      with open("catenergies.dat","a") as logObject:
+          logObject.write("{:10.3f}{:20.5f}{:20.5f}{:20.5f}\n".format(distance/1000, energy[0], energy[1],energy[2]))
+    
