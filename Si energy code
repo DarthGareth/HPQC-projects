@@ -9,7 +9,7 @@ def calculate_enegySi(scanDistance: float) -> float:
     moleculeZMAT = f'''
     Si1
     '''
-    neutralMolecule     = pyscf.M(atom = moleculeZMAT, basis = '3-21G', verbose = 9, charge = 0, spin = 1)
+    neutralMolecule     = pyscf.M(atom = moleculeZMAT, basis = '3-21G', verbose = 9, charge = 0, spin = 2)
     neutralMoleculeHF   = scf.newton(scf.UHF(neutralMolecule)).run()
     logObject               =   logger.new_logger(neutralMoleculeHF) 
     orbitals,_,stability,_  =   neutralMoleculeHF.stability(return_status = True)
